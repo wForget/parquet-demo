@@ -1,5 +1,6 @@
 package cn.wangz.demo.parquet;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.ByteBufferInputStream;
@@ -17,9 +18,11 @@ import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.values.ValuesReader;
+import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridDecoder;
 import org.apache.parquet.example.Paper;
 import org.apache.parquet.example.data.Group;
+import org.apache.parquet.hadoop.BloomFilterReader;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.ParquetReader;
@@ -36,6 +39,7 @@ import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.MessageType;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -121,11 +125,31 @@ public class PaperTest {
 
         ParquetFileReader parquetFileReader = ParquetFileReader.open(conf, path);
 
-        // page
+        // first block bloom filter
+        BloomFilterReader bloomFilterReader = parquetFileReader.getBloomFilterDataReader(0);
+        parquetFileReader.getFooter().getBlocks().get(0).getColumns().stream().forEach(columnChunkMetaData -> {
+            if (columnChunkMetaData.getBloomFilterOffset() < 0) {
+                return;
+            }
+            System.out.println("-- bloom filter: " + columnChunkMetaData.getPath().toDotString() + " --");
+            BloomFilter bloomFilter = bloomFilterReader.readBloomFilter(columnChunkMetaData);
+            ByteArrayOutputStream tempOutStream = new ByteArrayOutputStream();
+            try {
+                bloomFilter.writeTo(tempOutStream);
+                byte[] serializedBitset = tempOutStream.toByteArray();
+                // System.out.println(Arrays.toString(serializedBitset));
+                System.out.println(serializedBitset.length);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+
+        // first rowGroup
         DictionaryPageReadStore nextDictionaryReader = parquetFileReader.getNextDictionaryReader();
         PageReadStore pageReadStore = parquetFileReader.readNextRowGroup();
 
         // read column with ColumnReadStore
+        System.out.println("-- column0 --");
         ColumnReadStoreImpl crStore = new ColumnReadStoreImpl(pageReadStore, new DummyGroupConverter(), schema, null);
         ColumnDescriptor column0 = schema.getColumns().get(0);
         switch (column0.getPrimitiveType().getPrimitiveTypeName()) {
