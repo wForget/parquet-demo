@@ -1,6 +1,5 @@
 package cn.wangz.demo.parquet;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.ByteBufferInputStream;
@@ -146,11 +145,11 @@ public class PaperTest {
 
         // first rowGroup
         DictionaryPageReadStore nextDictionaryReader = parquetFileReader.getNextDictionaryReader();
-        PageReadStore pageReadStore = parquetFileReader.readNextRowGroup();
+        PageReadStore nextRowGroup = parquetFileReader.readNextRowGroup();
 
         // read column with ColumnReadStore
         System.out.println("-- column0 --");
-        ColumnReadStoreImpl crStore = new ColumnReadStoreImpl(pageReadStore, new DummyGroupConverter(), schema, null);
+        ColumnReadStoreImpl crStore = new ColumnReadStoreImpl(nextRowGroup, new DummyGroupConverter(), schema, null);
         ColumnDescriptor column0 = schema.getColumns().get(0);
         switch (column0.getPrimitiveType().getPrimitiveTypeName()) {
             case INT64:
@@ -170,7 +169,7 @@ public class PaperTest {
             System.out.println(column.getPrimitiveType());
             System.out.println(column.getMaxDefinitionLevel());
             System.out.println(column.getMaxRepetitionLevel());
-            PageReader pageReader = pageReadStore.getPageReader(column);
+            PageReader pageReader = nextRowGroup.getPageReader(column);
 
             // read dictionary
             DictionaryPage dictionaryPage = nextDictionaryReader.readDictionaryPage(column);
