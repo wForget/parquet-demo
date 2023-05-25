@@ -1,0 +1,11 @@
+{"namespace": "cn.wangz.demo.parquet.user.avro",
+ "type": "record",
+ "name": "User",
+ "fields": [
+     {"name": "id", "type": "long"},
+     {"name": "name", "type": "string"},
+     {"name": "age",  "type": "int"},
+     {"name": "hobbies", "type": {"type": "array", "items": "string", "default": []}},
+     {"name": "properties", "type": {"type": "map", "values": "string", "default": {}}}
+ ]
+}
